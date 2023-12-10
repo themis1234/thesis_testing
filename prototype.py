@@ -30,6 +30,7 @@ class violationHandler:
         f = open(filename)
         line = f.readline()
         database = self.database
+        violations = []
         while(len(line) != 0):
             if(line.find(database) != -1):
                 parts = line.split("requests")
@@ -37,12 +38,14 @@ class violationHandler:
                     url = re.search("(?P<url>https?://[^\s]+)",parts[1]).group("url").strip("')") #Finds the url in the line 
                     data = self.urlhandler(url)
                     print(url)
-                    violations = self.checkIfDataHaveViolation(data)
-                    print(violations)
-                    # for key in violation_to_function.keys():
-                    #     if(parts[1].startswith(key)):
-                            # pass
+                    violations_for_current_data = self.checkIfDataHaveViolation(data)
+                    print(violations_for_current_data)
+                    for key in violation_to_function.keys():
+                        if(parts[1].startswith(key) and violation_to_function[key] in violations_for_current_data):
+                            violation = violation_to_function[key] + " " + ",".join(data)
+                            violations.append(violation)
             line = f.readline()
+        print(violations)
 
     def checkIfDataHaveViolation(self, data):
         violations = set()
