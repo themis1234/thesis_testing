@@ -15,6 +15,7 @@ class violationHandler:
     def findVioaltions(self):
         f = open(self.violation_text, "r")
         line = f.readline()
+        violations_local = []
         viol_dict = {}
         while(line != "END_VIOLATIONS"):
             if(not line.startswith("\n")):
@@ -22,51 +23,82 @@ class violationHandler:
                 splited = line.split(':')
                 viol_dict[splited[0]] = splited[1]   
             else:
-                self.violations.append(viol_dict)
+                violations_local.append(viol_dict)
                 viol_dict = {}
             line = f.readline()
+        self.violations = self.sortViolationsBasedOnAttribute(violations_local)
+        print(self.violations)
+
+        
+    @staticmethod  
+    def sortViolationsBasedOnAttribute(violations):
+        violationsByAttribute = {}
+        for item in violations:
+            attribute = item["ATTRIBUTES"]
+            violation = item["ACTION"]
+            if(attribute in violationsByAttribute):
+                violationsByAttribute[attribute].append(violation)
+            else:
+                violationsByAttribute[attribute] = [violation]
+        return violationsByAttribute
 
     def checkForViolation(self, filename):
         f = open(filename)
+        line_number = 1
         line = f.readline()
         database = self.database
         violations = []
         while(len(line) != 0):
-            if(line.find(database) != -1):
+            if(line.find("requests") != -1  and not line.startswith("import")): #Finds database, checks for get requests
                 parts = line.split("requests")
-                if(len(parts) != 1):
-                    url = re.search("(?P<url>https?://[^\s]+)",parts[1]).group("url").strip("')") #Finds the url in the line 
+                if(line.find(database) != -1): 
+                    url = re.search("(?P<url>https?://[^\s]+)",parts[1]).group("url").strip("')") #Finds the url in the line. Problem when in the same line as the url is a /
                     data = self.urlhandler(url)
+                    print(data)
                     print(url)
-                    violations_for_current_data = self.checkIfDataHaveViolation(data)
-                    print(violations_for_current_data)
-                    for key in violation_to_function.keys():
-                        if(parts[1].startswith(key) and violation_to_function[key] in violations_for_current_data):
-                            violation = violation_to_function[key] + " " + ",".join(data)
-                            violations.append(violation)
+                    for attribute in data:
+                        print(attribute)
+                        if("GET" in self.violations[attribute]):
+                            violations.append(attribute + " GET in line " + str(line_number))
+                else:
+                    request = parts[1]
+                    test = self.postRequestHandler(parts[1], self.violations)
+                    if(test):
+                        violations.append(test + " in line " + str(line_number))
+
+            line_number += 1  
             line = f.readline()
         print(violations)
 
-    def checkIfDataHaveViolation(self, data):
-        violations = set()
-        for attribute in data:
-            for violation in self.violations:
-                if(attribute == violation["ATTRIBUTES"]):
-                    violations.add(violation["ACTION"])
-                    break
-        return violations
-            
+    @staticmethod
+    def postRequestHandler(request, violations):
+        data = request.split("=")[1].strip(" )\n")
+        print(data)
+        func = request.split("(")[0]
+        if(data in violations and violation_to_function[func] in violations[data]):
+            return data + " " + violation_to_function[func]
+        return False
 
+
+    # def checkIfDataHaveViolation(self, data):
+    #     violations = set()
+    #     for attribute in data:
+    #         if(attribute in self.violations):
+    #             violations.add(self.violations[attribute][0])
+                
+    #     return violations
+            
 
     def urlhandler(self, url):
         parts = url.split("?")
         if(len(parts) != 1):
             database = parts[0]
             variables = parts[1]
+            print(variables, 1234)
             if(database == self.database and variables.startswith("columns=")):
                 variables = variables[8:] #removes "columns="
                 data = variables.split(",")
-                return data
+                return data #returns the data that the GET request asked for
             else: return False
 
 
