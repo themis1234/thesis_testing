@@ -51,15 +51,21 @@ class violationHandler:
         while(len(line) != 0):
             if(line.find("requests") != -1  and not line.startswith("import")): #Finds database, checks for get requests
                 parts = line.split("requests")
-                if(line.find(database) != -1): 
-                    url = re.search("(?P<url>https?://[^\s]+)",parts[1]).group("url").strip("')") #Finds the url in the line. Problem when in the same line as the url is a /
-                    data = self.urlhandler(url)
-                    print(data)
-                    print(url)
-                    for attribute in data:
-                        print(attribute)
-                        if("GET" in self.violations[attribute]):
-                            violations.append(attribute + " GET in line " + str(line_number))
+                if(line.find(database) != -1):
+                    if(parts[1].startswith(".get")):
+                        url = re.search("(?P<url>https?://[^\s]+)",parts[1]).group("url").strip("')") #Finds the url in the line. Problem when in the same line as the url is a /
+                        data = self.urlGETHandler(url)
+                        print(data)
+                        print(url)
+                        for attribute in data:
+                            print(attribute)
+                            if("GET" in self.violations[attribute]):
+                                violations.append(attribute + " GET in line " + str(line_number))
+                    elif(parts[1].startswith(".put")):
+                        data = self.urlPUTHandler(parts[1])
+                        if(data and "PUT" in self.violations[data]):
+                            violations.append(attribute + " PUT in line " + str(line_number))
+
                 else:
                     request = parts[1]
                     test = self.postRequestHandler(parts[1], self.violations)
@@ -89,7 +95,7 @@ class violationHandler:
     #     return violations
             
 
-    def urlhandler(self, url):
+    def urlGETHandler(self, url):
         parts = url.split("?")
         if(len(parts) != 1):
             database = parts[0]
@@ -100,6 +106,14 @@ class violationHandler:
                 data = variables.split(",")
                 return data #returns the data that the GET request asked for
             else: return False
+
+    
+    def urlPUTHandler(self, request):
+        data = request.split(",")[1].split("=")[0].strip(" ")
+        if(data in self.violations):
+            return data
+        return False
+
 
 
 test = violationHandler("Violations", "https://www.myawesomedbservice.com/api/database")
