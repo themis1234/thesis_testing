@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Directory</title>
+</head>
+<body>
+    <input type="text" id="directoryInput" placeholder="Enter directory path" />
+    <button onclick="submitDirectory()">Submit</button>
+
+    <script>
+        function submitDirectory() {
+            var directory = document.getElementById('directoryInput').value;
+            fetch('/set-directory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ directory: directory })
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
